@@ -35,6 +35,7 @@ jobs:
             twine
             cython
             proj=${{ matrix.proj-version }}
+            python=3.10
 
 
       - name: Make sdist
