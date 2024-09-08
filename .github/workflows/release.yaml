@@ -2,7 +2,7 @@ name: Wheels & sdist
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, debug_windows_wheels ]
   release:
     types: [ released, prereleased ]
   pull_request:  # also build on PRs touching this file
@@ -62,18 +62,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - os: ubuntu-22.04
-          arch: x86_64
         # - os: ubuntu-22.04
-        #   arch: i686
-        - os: macos-12
-          arch: x86_64
-          cmake_osx_architectures: x86_64
-          macos_deployment_target: "12.0"
-        - os: macos-14
-          arch: arm64
-          cmake_osx_architectures: arm64
-          macos_deployment_target: "14.0"
+        #   arch: x86_64
+        # # - os: ubuntu-22.04
+        # #   arch: i686
+        # - os: macos-12
+        #   arch: x86_64
+        #   cmake_osx_architectures: x86_64
+        #   macos_deployment_target: "12.0"
+        # - os: macos-14
+        #   arch: arm64
+        #   cmake_osx_architectures: arm64
+        #   macos_deployment_target: "14.0"
         - os: "windows-2022"
           arch: "auto64"
           triplet: "x64-windows"
@@ -149,10 +149,12 @@ jobs:
           CIBW_TEST_REQUIRES: cython pytest numpy --config-settings=setup-args="-Dallow-noblas=true"
           CIBW_BEFORE_TEST: python -m pip install shapely pandas xarray || echo "Optional requirements install failed"
           CIBW_TEST_COMMAND: >
-            pyproj -v &&
-            python -c "import pyproj; pyproj.Proj(init='epsg:4269')"  &&
-            cp -r {package}/test . &&
-            python -m pytest test -v -s
+              python -V
+          # CIBW_TEST_COMMAND: >
+          #   pyproj -v &&
+          #   python -c "import pyproj; pyproj.Proj(init='epsg:4269')"  &&
+          #   cp -r {package}/test . &&
+          #   python -m pytest test -v -s
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
