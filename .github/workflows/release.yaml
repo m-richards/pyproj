@@ -2,7 +2,7 @@ name: Wheels & sdist
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main,  debug_windows_wheels_try_old_commits]
   release:
     types: [ created ]
   pull_request:  # also build on PRs touching this file
