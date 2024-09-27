@@ -2,9 +2,9 @@ name: Wheels & sdist
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main,  debug_windows_wheels_try_old_commits]
   release:
-    types: [ released, prereleased ]
+    types: [ created ]
   pull_request:  # also build on PRs touching this file
     paths:
       - ".github/workflows/release.yaml"
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PROJ_VERSION: "9.4.1"
+  PROJ_VERSION: "9.2.0"
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
@@ -26,26 +26,24 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Conda
-        uses: mamba-org/setup-micromamba@v1
+        uses: s-weigand/setup-conda@v1
         with:
-          init-shell: bash
-          environment-name: sdist_env
-          create-args: >-
-            python-build
-            twine
-            cython
-            proj=${{ matrix.proj-version }}
-
+          conda-channels: conda-forge
 
       - name: Make sdist
         shell: bash
         run: |
-          micromamba run -n sdist_env python -m build --sdist
+          conda config --prepend channels conda-forge
+          conda config --set channel_priority strict
+          conda create -n sdist_env build twine cython proj=${{ env.PROJ_VERSION }}
+          source activate sdist_env
+          python -m build --sdist
 
       - name: Check packages
         shell: bash
         run: |
-          micromamba run -n sdist_env twine check --strict dist/*
+          source activate sdist_env
+          twine check --strict dist/*
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -57,7 +55,6 @@ jobs:
   build_wheels:
     name: Build ${{ matrix.arch }} wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ github.event_name == 'push' && github.ref_type != 'tag' }}
     strategy:
       fail-fast: false
       matrix:
@@ -66,14 +63,12 @@ jobs:
           arch: x86_64
         # - os: ubuntu-22.04
         #   arch: i686
-        - os: macos-12
+        - os: macos-11
           arch: x86_64
           cmake_osx_architectures: x86_64
-          macos_deployment_target: "12.0"
         - os: macos-14
           arch: arm64
           cmake_osx_architectures: arm64
-          macos_deployment_target: "14.0"
         - os: "windows-2022"
           arch: "auto64"
           triplet: "x64-windows"
@@ -120,7 +115,7 @@ jobs:
           cp "$VCPKG_INSTALLATION_ROOT/installed/${{ matrix.triplet }}/share/proj/"* ${GITHUB_WORKSPACE}/pyproj/proj_dir/share/proj/
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.20
+        uses: pypa/cibuildwheel@v2.17
         env:
           CIBW_SKIP: "*musllinux* pp*-win* pp31*"
           CIBW_ARCHS: ${{ matrix.arch }}
@@ -134,8 +129,8 @@ jobs:
             PROJ_NETWORK=ON
             PROJ_VERSION=${{ env.PROJ_VERSION }}
             PROJ_DIR=${GITHUB_WORKSPACE}/pyproj/proj_dir
+            MACOSX_DEPLOYMENT_TARGET=10.9
             CMAKE_OSX_ARCHITECTURES='${{ matrix.cmake_osx_architectures }}'
-            MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_deployment_target }}
             LDFLAGS="${LDFLAGS} -Wl,-rpath,${GITHUB_WORKSPACE}/pyproj/proj_dir/lib"
           CIBW_ENVIRONMENT_WINDOWS:
             PROJ_WHEEL=true
@@ -143,7 +138,7 @@ jobs:
             PROJ_VERSION=${{ env.PROJ_VERSION }}
             PROJ_DIR=$VCPKG_INSTALLATION_ROOT/installed/${{ matrix.triplet }}
           CIBW_BEFORE_BUILD_WINDOWS: "python -m pip install delvewheel"
-          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair --add-path C:/vcpkg/installed/${{ matrix.triplet }}/bin -w {dest_dir} {wheel}"
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -vv --add-path C:\\Windows\\system32 --add-path C:/vcpkg/installed/${{ matrix.triplet }}/bin -w {dest_dir} {wheel}"
           CIBW_BEFORE_ALL_LINUX: bash ./ci/proj-compile-wheels.sh
           CIBW_BEFORE_ALL_MACOS: bash ./ci/proj-compile-wheels.sh
           CIBW_TEST_REQUIRES: cython pytest numpy --config-settings=setup-args="-Dallow-noblas=true"
@@ -164,53 +159,39 @@ jobs:
   publish:
     name: Publish on PyPI
     needs: [make_sdist,build_wheels]
-    if: ${{ github.repository_owner == 'pyproj4' && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
+    # release on every tag
+    if: github.event_name == 'release' && startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: sdist
           path: dist
       - uses: actions/download-artifact@v4
-        continue-on-error: ${{ github.event_name == 'push' && github.ref_type != 'tag' }}
         with:
           name: wheels-ubuntu-22.04-x86_64
           path: dist
       - uses: actions/download-artifact@v4
-        continue-on-error: ${{ github.event_name == 'push' && github.ref_type != 'tag' }}
         with:
-          name: wheels-macos-12-x86_64
+          name: wheels-macos-11-x86_64
           path: dist
       - uses: actions/download-artifact@v4
-        continue-on-error: ${{ github.event_name == 'push' && github.ref_type != 'tag' }}
         with:
           name: wheels-macos-14-arm64
           path: dist
       - uses: actions/download-artifact@v4
-        continue-on-error: ${{ github.event_name == 'push' && github.ref_type != 'tag' }}
         with:
           name: wheels-windows-2022-auto64
           path: dist
       - uses: actions/download-artifact@v4
-        continue-on-error: ${{ github.event_name == 'push' && github.ref_type != 'tag' }}
         with:
           name: wheels-windows-2022-auto32
           path: dist
 
       - name: Upload Wheels to PyPI
-        # release on every tag
-        if: ${{ github.event_name == 'release' && github.ref_type == 'tag' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip_existing: true
           # repository_url: https://test.pypi.org/legacy/  # To test
-
-
-      - name: Upload Nightly Wheelsref
-        if : ${{ github.ref_type == 'branch' && github.ref_name == 'main' }}
-        uses: scientific-python/upload-nightly-action@b67d7fcc0396e1128a474d1ab2b48aa94680f9fc
-        with:
-          artifacts_path: dist
-          anaconda_nightly_upload_token: ${{ secrets.ANACONDA_ORG_UPLOAD_TOKEN }}

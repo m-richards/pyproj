@@ -10,7 +10,7 @@ import warnings
 from typing import Any, Optional
 
 from pyproj._crs import CoordinateOperation
-from pyproj._version import PROJ_VERSION
+from pyproj._transformer import PROJ_VERSION
 from pyproj.exceptions import CRSError
 
 

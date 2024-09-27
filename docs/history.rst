@@ -8,7 +8,6 @@ Latest
 - DEP: Minimum PROJ version 9.2 (pull #1394)
 - ENH: Add :meth:`CRS.is_deprecated` and :meth:`CRS.get_non_deprecated` (pull #1383)
 - PERF: thread local context (issue #1133)
-- ENH: Add runtime & compiled PROJ versions (discussion #1420)
 - BUG: Handle changes to HotineObliqueMercatorBConversion (issue #1429)
 
 3.6.1

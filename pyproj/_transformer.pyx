@@ -25,6 +25,9 @@ from pyproj.aoi import AreaOfInterest
 from pyproj.enums import ProjVersion, TransformDirection, WktVersion
 from pyproj.exceptions import ProjError
 
+# version number string for PROJ
+proj_version_str = f"{PROJ_VERSION_MAJOR}.{PROJ_VERSION_MINOR}.{PROJ_VERSION_PATCH}"
+PROJ_VERSION = (PROJ_VERSION_MAJOR, PROJ_VERSION_MINOR, PROJ_VERSION_PATCH)
 _AUTH_CODE_RE = re.compile(r"(?P<authority>\w+)\:(?P<code>\w+)")
 
 

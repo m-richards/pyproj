@@ -5,6 +5,9 @@ from typing import Any, NamedTuple
 from pyproj._crs import _CRS, AreaOfUse, Base, CoordinateOperation
 from pyproj.enums import ProjVersion, TransformDirection
 
+proj_version_str: str
+PROJ_VERSION: tuple[int, int, int]
+
 class AreaOfInterest(NamedTuple):
     west_lon_degree: float
     south_lat_degree: float
